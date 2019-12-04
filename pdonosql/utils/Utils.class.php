@@ -8,7 +8,9 @@
 
 namespace pdonosql\utils;
 
-abstract class Utils {
+final class Utils {
+    private function __constructor(){}
+
     public static function noInject( string $name ){
         return str_replace( ';', '', explode(' ', $name)[0] );
     }
