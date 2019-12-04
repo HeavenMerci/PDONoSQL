@@ -13,7 +13,7 @@ class Less extends _PDONoSQLCheck {
 
     public function __construct( string $column, int $val){
         parent::__construct( $column );
-        $this->val = is_string($val) ? 999999 : $val;
+        $this->val = $val;
     }
 
     public function toString(): string {
