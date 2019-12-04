@@ -13,15 +13,17 @@ class NotEqual extends _PDONoSQLCheck {
 
     public function __construct( string $column, $val){
         parent::__construct( $column );
-        $this->val = is_string($val) ? '"'.$val.'"' : $val;
+        $this->val = $val;
     }
 
     public function toString(): string {
-        return $this->column.' <> '.$this->val; }
+        $val = is_string($this->val) ? '"'.$this->val.'"' : $this->val;
+        return $this->column.' <> '.$val; }
 
     public function eval( $data ): bool {
         if( !self::hasColumn($this->column, $data) )
             return false;
+
         return ($data[ $this->column ] !== $this->val);
     }
 }
