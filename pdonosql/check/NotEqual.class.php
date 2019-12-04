@@ -23,6 +23,7 @@ class NotEqual extends _PDONoSQLCheck {
     public function eval( $data ): bool {
         if( !self::hasColumn($this->column, $data) )
             return false;
+
         return ($data[ $this->column ] !== $this->val);
     }
 }
