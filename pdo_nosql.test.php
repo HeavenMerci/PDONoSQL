@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * @author HeavenMercy
+ *
+ * these tests depend on the database in the file 'test_db.sql'.
+ * You need to load that file in your SQL DBMS to create the database.
+ */
+
 include_once 'pdonosql/utils/autoload_class.php';
 
 
@@ -7,7 +14,6 @@ const HOST=  'localhost';
 const USRNAME = 'root';
 const PASSWD = 'root';
 
-/* correstpond to the database in the file 'test_db.sql */
 const DBNAME = 'test';
 
 
@@ -35,9 +41,9 @@ const TEST_QUERY_ID = 6;
 if( TEST_QUERY_ID == 1 ){
     $result = $nosql
         ->in( 'employee' )
-        ->if( new pdonosql\check\AndBag(
-            new pdonosql\check\Greater('salary', 49999),
-            new pdonosql\check\Equal('branch_id', 4) ))
+        ->if( new pdonosql\condition\bag\AndBag(
+            new pdonosql\condition\check\Greater('salary', 49999),
+            new pdonosql\condition\check\Equal('branch_id', 4) ) )
         ->create([
             'first_name' => 'John',
             'last_name' => 'Doe',
@@ -68,9 +74,9 @@ if( TEST_QUERY_ID == 2 ){
             ->in( 'employee' )
             ->andIn( 'branch', 'mgr_id', 'emp_id' )
             ->orderBy( pdonosql\utils\Utils::descending('salary') )
-            ->if( new pdonosql\check\OrBag(
-                new pdonosql\check\Equal('last_name', 'Mercy'),
-                new pdonosql\check\Equal('last_name', 'Scott') ) )
+            ->if( new pdonosql\condition\bag\OrBag(
+                new pdonosql\condition\check\Equal('last_name', 'Mercy'),
+                new pdonosql\condition\check\Equal('last_name', 'Scott') ) )
             ->read( pdonosql\utils\Utils::concat(['first_name', 'last_name'], "mgr_name"),
                 'salary', 'branch_name' )
     , true);
@@ -92,8 +98,8 @@ else
 if( TEST_QUERY_ID == 3 ){
     $result = $nosql
         ->in( 'employee' )
-        ->if( new pdonosql\check\Equal('emp_id', 110) )
-        ->update( ['super_id' => 109], new pdonosql\check\NotEqual('super_id', 110) );
+        ->if( new pdonosql\condition\check\Equal('emp_id', 110) )
+        ->update( ['super_id' => 109], new pdonosql\condition\check\NotEqual('super_id', 110) );
 }
 
 else
@@ -106,7 +112,7 @@ if( TEST_QUERY_ID == 4 ){
 
     $result = $nosql
         ->in( 'todo' )
-        ->if( new pdonosql\check\Equal('id', 7) )
+        ->if( new pdonosql\condition\check\Equal('id', 7) )
         ->delete();
 }
 
@@ -135,6 +141,6 @@ if( TEST_QUERY_ID == 6 ){
 
 
 
-if( $nosql->isOK()){
+if( $nosql->isOK() ){
     if( isset($result) ) echo $result;
 }else echo 'Error: '.$nosql->getException()->getMessage();

@@ -1,13 +1,14 @@
 <?php
-/**
- * helps to communicate with a database without writing any SQL query.
- *
- * @author HeavenMerci (more: HeavenMercy)
- * @version 1.0.0b
- */
 
 namespace pdonosql;
 
+/**
+ * help to communicate with a database without writing any SQL query. \
+ * NOTE: aliases can be used right after table names or before field names
+ *
+ * @author HeavenMercy
+ * @version 1.0.0
+ */
 class PDONoSQL {
     private $connection;
     public function __construct(\PDO $connection) {
@@ -20,6 +21,11 @@ class PDONoSQL {
         $this->connection->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
     }
 
+    /**
+     * clear the query of all the informations \
+     * like the main table, the joints, the order...
+     * It prepares the object for another query
+     */
     public function clear() {
         $this->main_table = null;
         $this->exception = null;
@@ -40,8 +46,10 @@ class PDONoSQL {
 
     /* handle exception */
     private $exception;
+    /** return any exception raised while processing the query */
     public function getException(): \Exception{
         return $this->exception; }
+    /** check if the query was processed without exception */
     public function isOK(){
         return ($this->exception === null); }
 
@@ -49,6 +57,12 @@ class PDONoSQL {
 
     /* set table */
     private $main_table;
+    /**
+     * define the main table
+     * equivalent to SQL 'FROM' or 'INTO'.
+     *
+     * @param string $main_table the table on which any query will executed primarily
+     */
     public function in( string $main_table ){
         $this->main_table = utils\Utils::noInject( $main_table );
         return $this;
@@ -56,18 +70,46 @@ class PDONoSQL {
 
 
     /* handle joints */
-    /** for LEFT JOIN */
+    /** for LEFT JOIN,
+     * i.e take all of the rows in the other table(s) and
+     * only rows of that table which have a relation with those rows . \
+     * \
+     * the missing data in the result will be NULL
+     */
     const PRIORITY_LOW = 1;
-    /** for INNER JOIN */
+    /** [DEFAULT] for INNER JOIN,
+     * i.e take in all the tables only rows that are
+     * related to at least one row in another table. \
+     * \
+     * the rows which have no link to any row in the other tables
+     * will be omitted.
+     */
     const PRIORITY_NORMAL = 2;
-    /** for RIGHT JOIN */
+    /** for RIGHT JOIN,
+     * i.e take all of the rows in the table and
+     * only rows of other table(s) ehich have a relation with those rows . \
+     * \
+     * the missing data in the result will be NULL
+     */
     const PRIORITY_HIGH = 4;
 
     private $joints;
     /**
-     * omit $link_to or $link_from for NATURAL JOIN ...
-     * ... i.e join on identical columns names.
-     * Caution: this can be unpredictable!
+     * specify another table to consult too, like SQL '* JOIN'.
+     *
+     * $link_from and $link_to are each in different table,
+     * no matter which order you mention them. \
+     * one must follow the pattern '[table].[column]'
+     * if the column exit in more than one table.
+     *
+     * omit $link_to or $link_from for NATURAL JOIN,
+     * i.e join on identical columns names. \
+     * Caution: natural join can be unpredictable!
+     *
+     * @param string $table the other table to consult
+     * @param string $link_from the column of one table
+     * @param string $link_to the column of the second table
+     * @param int $priority a 'PRIORITY_*' representing the joint
      * */
     public function andIn( string $table,
         string $link_from=null, string $link_to=null,
@@ -93,18 +135,28 @@ class PDONoSQL {
     /* handle conditions */
     private $where;
     private $having;
-    public function if( $what, $checks_table_columns = true ){
-        if( $what instanceof check\_PDONoSQLCheck ||
-            $what instanceof check\_PDONoSQLBag )
-            if($checks_table_columns) $this->where = $what;
-            else $this->having = $what;
-        else throw new \Exception("expecting a pdonosql\check\_PDONoSQLCheck or a pdonosql\check\_PDONoSQLBag", 1);
+    /**
+     * define conditions for the query to be processed. \
+     * those conditions apply generally on data in tables. \
+     * But with 'create' query (INSERT) the conditions verify data inserted.
+     *
+     * @param \pdonosql\condition\_PDONoSQLCondition $condition the condition
+     * @param bool $checks_table_columns specifies if the conditions apply on table column's
+     */
+    public function if( condition\_PDONoSQLCondition $condition, bool  $checks_table_columns = true ){
+        if($checks_table_columns) $this->where = $condition;
+        else $this->having = $condition;
 
         return $this;
     }
 
     /* handle groups by */
     private $group = '';
+    /**
+     * group the resulting row by data using column names in order.
+     *
+     * @param string[] ...$columns the comma-separated list of columns name
+     */
     public function groupBy( string ...$columns ) {
         $this->group = ' GROUP BY '.join( ', ',
             array_map(function( $col ){ return utils\Utils::noInject( $col ); }, $columns) );
@@ -113,6 +165,11 @@ class PDONoSQL {
 
     /* handle order by */
     private $order = '';
+    /**
+     * order the resulting row by data using column namesin order.
+     *
+     * @param string[] ...$columns the comma-separated list of columns name
+     */
     public function orderBy( string ...$columns ) {
         $this->order = ' ORDER BY '.join(', ',
             array_map(function( $col ){ return utils\Utils::noInject( $col ); }, $columns) );
@@ -121,6 +178,12 @@ class PDONoSQL {
 
     /* handle order by */
     private $limit = '';
+    /**
+     * take only a set of data in the result
+     *
+     * @param int $row_count the number of rows the extract
+     * @param int $from_row the row index from which to start (like array index)
+     */
     public function takeOnly( int $row_count, int $from_row=0 ) {
         $this->limit = ' LIMIT '.$from_row.', '.$row_count;
         return $this;
@@ -128,7 +191,16 @@ class PDONoSQL {
 
 
     /* CRUD ACTIONS */
-    public function create( array $data ): int /* number of rows created */ {
+    /**
+     * insert a new row in the database. \
+     * execute the 'create' (SQL INSERT) query.
+     *
+     * @param array $data the row data to insert in the table.
+     * an associated array with table columns as keys.
+     *
+     * @return bool specifies if the insertion succeeded
+     */
+    public function create( array $data ): bool {
         $this->exception = null;
         try{
             if( empty($data) ) throw new \Exception("empty data received!", 1);
@@ -152,10 +224,10 @@ class PDONoSQL {
             $query = 'INSERT INTO '.$this->main_table.'('.$columns.') '.
                 'VALUES('.$values.')';
 
-            return $this->connection->exec($query);
+            return ($this->connection->exec($query) > 0);
         }catch(\Exception $e){
             $this->exception = $e;
-            return 0;
+            return false;
         }
     }
 
@@ -181,7 +253,16 @@ class PDONoSQL {
             $this->order.
             $this->limit;
     }
-    public function read( string ...$columns ): array /* read data in assoc-array */ {
+
+    /**
+     * retrieve informations from the database. \
+     * execute the 'read' (SQL SELECT) query.
+     *
+     * @param string[] ...$columns the columns to read
+     *
+     * @return array the array of associated-arrays (rows) read
+     */
+    public function read( string ...$columns ): array {
         $this->_check();
 
         $this->exception = null;
@@ -198,6 +279,16 @@ class PDONoSQL {
             return [];
         }
     }
+
+    /**
+     * retrieve informations from the database and
+     * take only one occurrence of a set of data (if available many times) \
+     * execute the 'readOnce' (SQL SELECT DISTINCT) query.
+     *
+     * @param string[] ...$columns the columns to read
+     *
+     * @return array the array of associated-arrays (rows) read
+     */
     public function readOnce( string ...$columns ): array /* read data in assoc-array */ {
         $this->_check();
 
@@ -216,12 +307,17 @@ class PDONoSQL {
         }
     }
 
-    public function update( array $data, $data_check = null ): int /* number of rows updated */ {
-        if( ! is_null($data_check) )
-            if( !($data_check instanceof check\_PDONoSQLCheck ||
-                $data_check instanceof check\_PDONoSQLBag) )
-                throw new \Exception("expecting a pdonosql\check\_PDONoSQLCheck or a pdonosql\check\_PDONoSQLBag", 1);
-
+    /**
+     * update informations in the database. \
+     * execute the 'update' (SQL UPDATE) query.
+     *
+     * @param array $data the data to insert as update
+     * @param \pdonosql\condition\_PDONoSQLCondition|null $data_check
+     * the condition to verify on data for their inserting
+     *
+     * @return int the number of rows updated
+     */
+    public function update( array $data, condition\_PDONoSQLCondition $data_check = null ): int {
         $this->exception = null;
         try{
             if( empty($data) ) throw new \Exception("empty data received!", 1);
@@ -252,7 +348,13 @@ class PDONoSQL {
         }
     }
 
-    public function delete(){
+    /**
+     * delete informations from the database. \
+     * execute the 'delete' (SQL DELETE) query.
+     *
+     * @return int the number of rows deleted
+     */
+    public function delete(): int {
         $this->exception = null;
         try{
             $where = '';
@@ -269,7 +371,12 @@ class PDONoSQL {
     }
 
 
-    public function getTables(){
+    /**
+     * retrieve all the table names in the database
+     *
+     * @return array the array of table names
+     */
+    public function getTables(): array {
         $this->exception = null;
         try{
             $query = 'SHOW TABLES';
@@ -285,7 +392,14 @@ class PDONoSQL {
         }
     }
 
-    public function getFields(){
+    /**
+     * retrieve a table description in the database.\
+     * for each field, gets the informations: Field, Type
+     * Null, Key, Default, Extra (the extra informations)
+     *
+     * @return array the array of field description (associative-array)
+     */
+    public function getFields(): array{
         $this->_check();
 
         $this->exception = null;

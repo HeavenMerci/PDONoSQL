@@ -1,13 +1,13 @@
 <?php
+
+namespace pdonosql\condition\check;
+
 /**
- * checks if a column is equal to a given value
+ * check if a column value is equal to a given value
  *
- * @author HeavenMerci (more: HeavenMercy)
- * @version 1.0.0b
+ * @author HeavenMercy
+ * @version 1.0.0
  */
-
-namespace pdonosql\check;
-
 class Equal extends _PDONoSQLCheck {
     private $val;
 

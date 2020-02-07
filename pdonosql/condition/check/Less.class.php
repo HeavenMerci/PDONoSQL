@@ -1,14 +1,14 @@
 <?php
+
+namespace pdonosql\condition\check;
+
 /**
- * checks if a column is greater than a given value
+ * check if a column value is less than a given value
  *
- * @author HeavenMerci (more: HeavenMercy)
- * @version 1.0.0b
+ * @author HeavenMercy
+ * @version 1.0.0
  */
-
-namespace pdonosql\check;
-
-class Greater extends _PDONoSQLCheck {
+class Less extends _PDONoSQLCheck {
     private $val;
 
     public function __construct( string $column, int $val){
@@ -17,11 +17,11 @@ class Greater extends _PDONoSQLCheck {
     }
 
     public function toString(): string {
-        return $this->column.' > '.$this->val; }
+        return $this->column.' < '.$this->val; }
 
     public function eval( $data ): bool {
         if( !self::hasColumn($this->column, $data) )
             return false;
-        return ($data[ $this->column ] > $this->val);
+        return ($data[ $this->column ] < $this->val);
     }
 }
